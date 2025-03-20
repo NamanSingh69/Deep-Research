@@ -1,0 +1,5 @@
+aiosqlite
+beautifulsoup4
+google-generativeai
+playwright
+youtube-transcript-api
