@@ -1,5 +1,8 @@
-aiosqlite
+fastapi
+uvicorn[standard]
+httpx
 beautifulsoup4
 google-generativeai
-playwright
 youtube-transcript-api
+aiosqlite
+pydantic
