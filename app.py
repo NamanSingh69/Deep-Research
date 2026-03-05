@@ -17,9 +17,7 @@ import aiosqlite
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
 
 from fastapi import FastAPI, Request, Depends, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -63,9 +61,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Setup templates and static files
-templates = Jinja2Templates(directory="templates")
-
+# Setup static files removed since frontend is hosted separately on Vercel
 # --- Database Setup ---
 DATABASE = "deep_research.db"
 
@@ -842,12 +838,10 @@ class DeepResearchTool:
 
 # --- FastAPI Routes ---
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    """Serve the main HTML page."""
-    return templates.TemplateResponse("index.html", {"request": request})
-
-from fastapi.responses import HTMLResponse
+@app.get("/api/health")
+async def health_check():
+    """Returns the API health."""
+    return JSONResponse({"status": "healthy", "service": "Deep Research API"})
 
 @app.post("/research")
 async def research(research_request: ResearchRequest):
