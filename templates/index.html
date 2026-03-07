@@ -2,7 +2,12 @@
 <html lang="en">
 
 <head>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>??</text></svg>">
+    <link rel=\"icon\" href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'
+        %3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25' %3E%3Cstop offset='0%25'
+        stop-color='%238b5cf6' /%3E%3Cstop offset='100%25' stop-color='%237c3aed'
+        /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='45' fill='url(%23g)' /%3E%3Ccircle cx='40'
+        cy='40' r='15' fill='none' stroke='white' stroke-width='6' /%3E%3Cline x1='50' y1='50' x2='70' y2='70'
+        stroke='white' stroke-width='8' stroke-linecap='round' /%3E%3C/svg%3E\">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deep Research — Autonomous AI Agent</title>
@@ -483,7 +488,12 @@
             <div class="config-form">
                 <div class="form-group">
                     <label for="api-key">API Key</label>
-                    <input type="password" id="api-key" placeholder="Enter your Google AI/Gemini API key">
+                    <input type="password" id="api-key"
+                        placeholder="Using public fallback key — paste your own for higher limits">
+                    <div style="font-size: 0.65rem; color: var(--neutral-700); margin-top: 4px; line-height: 1.3;">
+                        ✅ A free public API key is active by default. Add your own for higher rate limits.<br />
+                        <strong>Free Tier Limits:</strong> 15 Requests/Min, 1,000,000 Tokens/Min, 1,500 Requests/Day.
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="depth">Research Depth</label>
@@ -652,11 +662,6 @@
 
                 const message = messageInput.value.trim();
                 if (!message || chatState.isResearching) return;
-
-                if (!config.apiKey) {
-                    updateStatus('error', 'Please enter an API key');
-                    return;
-                }
 
                 // Clear input and reset height
                 messageInput.value = '';
@@ -992,4 +997,3 @@
 </body>
 
 </html>
-
