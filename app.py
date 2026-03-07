@@ -172,7 +172,7 @@ class DeepResearchTool:
     MODEL_CASCADE = [
         "gemini-2.5-pro",
         "gemini-2.5-flash",
-        "gemini-flash-latest",
+        "gemini-2.5-flash-lite",
     ]
 
     def configure_api(self, api_key: Optional[str] = None):
