@@ -183,7 +183,7 @@ class DeepResearchTool:
         Get your free API key at: https://aistudio.google.com/app/apikey
         """
         if not api_key:
-            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY") or "AIzaSyAmFPeaoBow1mHG0bnZG4y_6QkqN98e4oo"
 
         if not api_key:
             raise ValueError(
