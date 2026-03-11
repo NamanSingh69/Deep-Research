@@ -27,7 +27,7 @@ Official model docs: https://ai.google.dev/gemini-api/docs/models
 import os
 import re
 import logging
-import google.generativeai as genai
+from google import genai
 
 logger = logging.getLogger(__name__)
 
@@ -127,19 +127,20 @@ def _score_model(model_name: str) -> float:
     return round(score, 2)
 
 
-def discover_models() -> list:
+def discover_models(api_key: str = None) -> list:
     """Fetch all available Gemini models that support content generation.
     
     Returns a list of model names sorted by quality score (best first).
     """
     try:
-        models = genai.list_models()
+        client = genai.Client(api_key=api_key) if api_key else genai.Client()
+        models = client.models.list()
         content_models = []
         for m in models:
             # Filter for models that support generateContent
-            methods = getattr(m, "supported_generation_methods", []) or []
+            methods = getattr(m, "supported_generation_methods", []) or getattr(m, "supported_actions", []) or []
             method_strs = [str(method) for method in methods]
-            if any("generateContent" in s for s in method_strs):
+            if not method_strs or any("generate" in s.lower() for s in method_strs):
                 content_models.append(m.name)
 
         if not content_models:
@@ -167,10 +168,7 @@ def print_available_models(api_key: str = None):
     Call this at startup to show users what models are available, their
     rate limits, and which one was auto-selected.
     """
-    if api_key:
-        genai.configure(api_key=api_key)
-
-    available = discover_models()
+    available = discover_models(api_key)
 
     print("\n" + "=" * 80)
     print("  🤖 Available Gemini Models (Free Tier)")
@@ -197,88 +195,31 @@ def print_available_models(api_key: str = None):
     print("=" * 80 + "\n")
 
 
-def get_best_model(api_key: str = None, preferred_tier: str = None) -> genai.GenerativeModel:
-    """Auto-select and return the best available Gemini model.
+def get_best_model_name(api_key: str = None, preferred_tier: str = None) -> str:
+    """Auto-select and return the best available Gemini model name string.
     
     Resolution order:
     1. GEMINI_MODEL env var override (if set)
-    2. Dynamic discovery from API (genai.list_models())
+    2. Dynamic discovery from API (client.models.list())
     3. Static fallback cascade (MODEL_CASCADE)
     
     Args:
-        api_key: Optional API key. If not provided, must be pre-configured.
+        api_key: Optional API key. If not provided, client attempts default lookup.
         preferred_tier: Optional filter — "pro", "flash", or "lite".
-    
-    Returns:
-        A configured genai.GenerativeModel using the best available model.
     """
-    if api_key:
-        genai.configure(api_key=api_key)
-
-    # 1. Check for explicit env var override
     env_model = os.environ.get("GEMINI_MODEL")
     if env_model:
-        try:
-            model = genai.GenerativeModel(env_model)
-            model.count_tokens("test")
-            logger.info(f"✅ Using env override model: {env_model}")
-            return model
-        except Exception as e:
-            logger.warning(f"⚠️  Env model {env_model} failed: {e}. Falling back to auto-select.")
+        return env_model
 
-    # 2. Dynamic discovery
-    available = discover_models()
-
-    # Filter by preferred tier if specified
+    available = discover_models(api_key)
     if preferred_tier:
         tier_filtered = [m for m in available if preferred_tier.lower() in m.lower()]
         if tier_filtered:
             available = tier_filtered
 
-    # 3. Try each model until one works
-    for model_name in available:
-        try:
-            model = genai.GenerativeModel(model_name)
-            model.count_tokens("test")  # Quick validation
-            logger.info(f"✅ Selected model: {model_name}")
-            print(f"✅ Gemini model: {model_name}")
-            return model
-        except Exception as e:
-            logger.debug(f"Model {model_name} failed: {e}")
-
-    # 4. Absolute last resort
-    fallback = MODEL_CASCADE[-1]
-    logger.warning(f"All models failed validation. Using last resort: {fallback}")
-    return genai.GenerativeModel(fallback)
-
-
-def get_best_model_name(api_key: str = None, preferred_tier: str = None) -> str:
-    """Same as get_best_model but returns just the model name string."""
-    if api_key:
-        genai.configure(api_key=api_key)
-
-    env_model = os.environ.get("GEMINI_MODEL")
-    if env_model:
-        try:
-            model = genai.GenerativeModel(env_model)
-            model.count_tokens("test")
-            return env_model
-        except Exception:
-            pass
-
-    available = discover_models()
-    if preferred_tier:
-        tier_filtered = [m for m in available if preferred_tier.lower() in m.lower()]
-        if tier_filtered:
-            available = tier_filtered
-
-    for model_name in available:
-        try:
-            model = genai.GenerativeModel(model_name)
-            model.count_tokens("test")
-            return model_name
-        except Exception:
-            continue
+    if available:
+        logger.info(f"✅ Selected model name: {available[0]}")
+        return available[0]
 
     return MODEL_CASCADE[-1]
 

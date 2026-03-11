@@ -11,7 +11,7 @@ from urllib.parse import urlparse, parse_qs
 
 import httpx
 import uvicorn
-import google.generativeai as genai
+from google import genai
 from bs4 import BeautifulSoup
 import aiosqlite
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
@@ -165,7 +165,8 @@ class DeepResearchTool:
     def __init__(self, config: ResearchConfig):
         """Initialize the research tool with configuration."""
         self.config = config
-        self.model = None
+        self.client = None
+        self.model_name = "gemini-2.5-pro"
         self.http_client = httpx.AsyncClient(timeout=config.search_timeout)
 
     # Model fallback cascade — tries best model first, falls back on error
@@ -440,7 +441,7 @@ class DeepResearchTool:
         if num_queries is None:
             num_queries = self.config.breadth
 
-        if not self.model:
+        if not self.client:
             raise ValueError("Gemini API not configured. Call configure_api() first.")
 
         try:
@@ -458,7 +459,10 @@ class DeepResearchTool:
             - Do NOT include additional text, only the JSON
             """
 
-            response = self.model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
             response_text = response.text
             response_text = re.sub(r'```(?:json)?\n?(.*?)```', r'\1', response_text, flags=re.DOTALL)
 
@@ -497,7 +501,7 @@ class DeepResearchTool:
         search_results: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
         """Interact with Gemini, incorporating search results and chat history."""
-        if not self.model:
+        if not self.client:
             raise ValueError("Gemini API not configured. Call configure_api() first.")
 
         try:
@@ -608,17 +612,20 @@ class DeepResearchTool:
             gemini_history = [{"role": "user", "parts": [{"text": system_message}]}]
             gemini_history.extend(session.get_history())
 
-            # Start chat with previous history
-            chat = self.model.start_chat(history=gemini_history)
-
             # Prepare the current message (include search context if available)
             if search_context:
                 current_message = f"{search_context}\n\nUser query: {user_query}"
             else:
                 current_message = user_query
 
-            # Send the current message
-            response = await chat.send_message_async(current_message)
+            # Append the current message
+            gemini_history.append({"role": "user", "parts": [{"text": current_message}]})
+
+            # Send the complete context and history to the model
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=gemini_history
+            )
 
             # Add the current message and response to session history
             session.add_message("user", current_message)
@@ -686,7 +693,7 @@ class DeepResearchTool:
         self.configure_api(api_key)
 
         # Check if Gemini API is configured
-        if not self.model:
+        if not self.client:
             raise ValueError("Gemini API not configured. Call configure_api() first.")
 
         main_session = ChatSession(session_id)
@@ -732,7 +739,7 @@ class DeepResearchTool:
                     "responses": []
                 }
 
-                for i, query in enumerate(follow_up_queries, 1):
+                async def process_query(i, query):
                     logger.info(f"Researching question {i}/{len(follow_up_queries)} at depth {d}: {query}")
                     sub_session_id = f"{session_id}_depth{d}_question{i}"
                     sub_session = ChatSession(sub_session_id)  # Separate session for each question
@@ -740,16 +747,30 @@ class DeepResearchTool:
                     sub_search_results = await self.search_web(query, breadth)
                     sub_response_data = await self.chat_with_content(query, sub_session, sub_search_results)
                     sub_sources = self.extract_sources(sub_response_data["response"]) # Extract the sources
-
-                    level_details["responses"].append({
+                    return {
+                        "index": i,
                         "query": query,
                         "search_results": sub_search_results,
                         "response": sub_response_data["response"],
-                        "sources": sub_sources  # Store extracted sources
+                        "sources": sub_sources
+                    }
+
+                tasks = [process_query(i, q) for i, q in enumerate(follow_up_queries, 1)]
+                results = list(await asyncio.gather(*tasks))
+
+                # Sort results by index to maintain logical order
+                results.sort(key=lambda x: x["index"])
+
+                for res in results:
+                    level_details["responses"].append({
+                        "query": res["query"],
+                        "search_results": res["search_results"],
+                        "response": res["response"],
+                        "sources": res["sources"]  # Store extracted sources
                     })
-                    report_content += f"### Question: {query}\n\n{sub_response_data['response']}\n\n"
-                    all_sources.extend(sub_sources) # Store extracted sources
-                    current_report += f"\n\n{query}\n{sub_response_data['response']}" # update current report
+                    report_content += f"### Question: {res['query']}\n\n{res['response']}\n\n"
+                    all_sources.extend(res["sources"]) # Store extracted sources
+                    current_report += f"\n\n{res['query']}\n{res['response']}" # update current report
 
                 research_log["levels"].append(level_details)
 

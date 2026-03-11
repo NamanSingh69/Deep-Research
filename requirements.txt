@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 httpx
 beautifulsoup4
-google-generativeai
+google-genai
 youtube-transcript-api
 aiosqlite
 pydantic
