@@ -192,42 +192,24 @@ class DeepResearchTool:
                 "https://aistudio.google.com/app/apikey"
             )
 
-        genai.configure(api_key=api_key)
+        # Initialize the google-genai client
+        self.client = genai.Client(api_key=api_key)
 
         # Try dynamic model discovery first
         try:
-            from gemini_model_resolver import get_best_model, get_best_model_name
+            from gemini_model_resolver import get_best_model_name
             preferred_tier = "pro" if "pro" in getattr(self.config, "model_name", "pro") else "flash"
-            self.model = get_best_model(preferred_tier=preferred_tier)
-            self.config.model_name = get_best_model_name(preferred_tier=preferred_tier)
-            logger.info(f"Dynamic model discovery selected: {self.config.model_name}")
-            return self.model
+            self.model_name = get_best_model_name(api_key=api_key, preferred_tier=preferred_tier)
+            self.config.model_name = self.model_name
+            logger.info(f"Dynamic model discovery selected: {self.model_name}")
         except ImportError:
             logger.info("gemini_model_resolver not found, using static cascade")
+            self.model_name = self.config.model_name
         except Exception as e:
-            logger.warning(f"Dynamic model discovery failed: {e}. Using static cascade.")
+            logger.warning(f"Dynamic model discovery failed: {e}. Using config default.")
+            self.model_name = self.config.model_name
 
-        # Static fallback cascade
-        models_to_try = [self.config.model_name] + [
-            m for m in self.MODEL_CASCADE if m != self.config.model_name
-        ]
-
-        for model_name in models_to_try:
-            try:
-                self.model = genai.GenerativeModel(model_name)
-                self.model.count_tokens("test")
-                self.config.model_name = model_name
-                logger.info(f"Gemini API configured with model: {model_name}")
-                return self.model
-            except Exception as e:
-                logger.warning(f"Model {model_name} unavailable: {e}. Trying next...")
-
-        # Final fallback
-        fallback = self.MODEL_CASCADE[-1]
-        self.model = genai.GenerativeModel(fallback)
-        self.config.model_name = fallback
-        logger.warning(f"All preferred models failed. Using fallback: {fallback}")
-        return self.model
+        logger.info(f"Gemini API configured. Client ready with model: {self.model_name}")
 
     async def search_web(self, query: str, num_results: int = None) -> List[Dict[str, str]]:
         """
