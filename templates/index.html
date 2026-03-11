@@ -1047,6 +1047,10 @@
                         }
                     };
 
+                    // Show skeleton loaders while researching
+                    const thinkingId = showSkeletonLoaders();
+                    trackUsage();
+
                     const response = await fetch('/research', {
                         method: 'POST',
                         headers: {
@@ -1056,22 +1060,19 @@
                     });
 
                     if (response.status === 429) {
+                        removeMessage(thinkingId);
                         throw new Error('⏳ Rate limit reached — try again in ~1 minute, or switch to Fast mode.');
                     }
 
                     if (!response.ok) {
+                        removeMessage(thinkingId);
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Research request failed');
                     }
 
-                    trackUsage();
-
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let buffer = '';
-
-                    // Show skeleton loaders while researching
-                    const thinkingId = showSkeletonLoaders();
 
                     while (true) {
                         const { done, value } = await reader.read();
