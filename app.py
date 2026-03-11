@@ -33,7 +33,7 @@ class ResearchRequest(BaseModel):
 class ConfigModel(BaseModel):
     depth: int = 2
     breadth: int = 3
-    model: str = "gemini-2.0-flash-thinking-exp-01-21"
+    model: str = "gemini-2.5-pro"
     citationMode: bool = True
     sessionId: str
     apiKey: str
@@ -47,7 +47,7 @@ class ResearchConfig:
     max_content_length: int = 60000  # Maximum length of extracted content
     search_timeout: int = 30    # Timeout for web operations in seconds
     citation_mode: bool = True  # Enable/disable citation mode for reports
-    model_name: str = "gemini-2.0-flash-thinking-exp-01-21"  # Default model to use
+    model_name: str = "gemini-2.5-pro"  # Default model to use
 
 # --- FastAPI App Setup ---
 app = FastAPI(title="Deep Research API")
@@ -196,8 +196,9 @@ class DeepResearchTool:
         # Try dynamic model discovery first
         try:
             from gemini_model_resolver import get_best_model, get_best_model_name
-            self.model = get_best_model(preferred_tier="flash")
-            self.config.model_name = get_best_model_name(preferred_tier="flash")
+            preferred_tier = "pro" if "pro" in getattr(self.config, "model_name", "pro") else "flash"
+            self.model = get_best_model(preferred_tier=preferred_tier)
+            self.config.model_name = get_best_model_name(preferred_tier=preferred_tier)
             logger.info(f"Dynamic model discovery selected: {self.config.model_name}")
             return self.model
         except ImportError:
@@ -514,7 +515,7 @@ class DeepResearchTool:
                     })
 
             # Build the system message
-            system_message = """
+            system_message = r"""
             **User query: {user_query}**
 
             {search_context}

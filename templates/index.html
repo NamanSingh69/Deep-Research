@@ -306,6 +306,29 @@
             color: var(--neutral-700);
         }
 
+        .quota-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+            margin: 0 1.5rem;
+            justify-content: flex-end;
+        }
+
+        .quota-bar {
+            height: 6px;
+            width: 150px;
+            background-color: var(--neutral-200);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .quota-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
         .status-indicator {
             display: flex;
             align-items: center;
@@ -472,6 +495,161 @@
         .session-item button {
             margin-left: 1rem;
         }
+
+        /* ── Toast Notification System ── */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            min-width: 280px;
+            max-width: 420px;
+            padding: 0.875rem 1.25rem;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.875rem;
+            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            animation: toastSlideIn 0.35s cubic-bezier(0.22,1,0.36,1) forwards;
+            opacity: 0;
+            transform: translateX(100%);
+        }
+
+        .toast.removing {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+
+        .toast.success { background: linear-gradient(135deg, #059669, #10b981); }
+        .toast.error   { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        .toast.info    { background: linear-gradient(135deg, #0284c7, #06b6d4); }
+        .toast.warning { background: linear-gradient(135deg, #d97706, #f59e0b); }
+
+        .toast-icon { font-size: 1.15rem; flex-shrink: 0; }
+        .toast-msg  { flex: 1; line-height: 1.4; }
+
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastSlideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to   { opacity: 0; transform: translateX(100%); }
+        }
+
+        /* ── Skeleton Loaders ── */
+        .skeleton-container {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .skeleton-card {
+            background: rgba(10, 25, 35, 0.75);
+            border: 1px solid rgba(6, 182, 212, 0.1);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .skeleton-line {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 200px 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+            height: 14px;
+        }
+
+        .skeleton-line.title  { width: 60%; height: 20px; }
+        .skeleton-line.long   { width: 95%; }
+        .skeleton-line.medium { width: 75%; }
+        .skeleton-line.short  { width: 40%; }
+        .skeleton-line.link   { width: 50%; height: 12px; margin-top: 0.25rem; }
+
+        @keyframes shimmer {
+            0%   { background-position: -200px 0; }
+            100% { background-position: 200px 0; }
+        }
+
+        /* ── Rate Limit Badge ── */
+        .rate-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(6, 182, 212, 0.12);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: var(--primary-light);
+            white-space: nowrap;
+        }
+
+        .rate-badge.warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24; }
+        .rate-badge.danger  { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #f87171; }
+
+        /* ── Mobile Hardening ── */
+        .message-content {
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .previous-sessions {
+            overflow-wrap: break-word;
+        }
+
+        .previous-sessions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        @media (max-width: 480px) {
+            .status-bar {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: flex-start;
+            }
+
+            .quota-bar-container {
+                margin: 0;
+                width: 100%;
+            }
+
+            .session-info {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .chat-input textarea {
+                font-size: 16px; /* prevents iOS zoom on focus */
+            }
+
+            .toast {
+                min-width: unset;
+                max-width: calc(100vw - 2rem);
+                right: 0;
+            }
+
+            .toast-container {
+                left: 1rem;
+                right: 1rem;
+            }
+        }
     </style>
 
     <link rel="icon" type="image/png" href="/static/favicon.png">
@@ -514,12 +692,21 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="model">Model</label>
-                    <select id="model">
-                        <option value="gemini-2.0-flash-thinking-exp-01-21" selected>Gemini 2.0 Flash-Thinking</option>
-                        <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro</option>
-                        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                    </select>
+                    <label>Agent Mode & Engine</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <div style="display: flex; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 2px;">
+                            <button type="button" id="mode-pro"
+                                style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: var(--primary-color);">⚡
+                                PRO</button>
+                            <button type="button" id="mode-fast"
+                                style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: transparent; color: var(--neutral-700);">🚀
+                                FAST</button>
+                        </div>
+                        <select id="model" style="flex: 1;">
+                            <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro (Deep Research)</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label style="visibility: hidden;">Save Config</label>
@@ -543,9 +730,16 @@
                     <div class="status-dot" id="status-dot"></div>
                     <span id="status-text">Ready</span>
                 </div>
+                <div class="quota-bar-container">
+                    <span id="rate-badge" class="rate-badge">⚡ Requests: 15/15 remaining</span>
+                    <div class="quota-bar">
+                        <div class="quota-fill" id="quota-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
                 <div class="session-info">
                     Session ID: <span id="session-id">-</span>
-                    <button type="button" id="new-session-button" class="secondary">New Session</button>
+                    <button type="button" id="new-session-button" class="secondary"
+                        style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">New Session</button>
                 </div>
             </div>
             <div class="previous-sessions">
@@ -556,6 +750,8 @@
             </div>
         </div>
     </main>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
 
     <script>
         // Initialize the app
@@ -584,7 +780,8 @@
                 apiKey: localStorage.getItem('apiKey') || '',
                 depth: parseInt(localStorage.getItem('depth') || '2'),
                 breadth: parseInt(localStorage.getItem('breadth') || '3'),
-                model: localStorage.getItem('model') || 'gemini-2.0-flash-thinking-exp-01-21',
+                mode: localStorage.getItem('gemini_mode') || 'pro',
+                model: localStorage.getItem('model') || 'gemini-2.5-pro',
                 markdown: true,
                 citationMode: true
             };
@@ -615,12 +812,165 @@
             const sessionIdSpan = document.getElementById('session-id');
             const newSessionButton = document.getElementById('new-session-button');
             const previousSessionsList = document.getElementById('previous-sessions-list');
+            const modeProBtn = document.getElementById('mode-pro');
+            const modeFastBtn = document.getElementById('mode-fast');
+            const rateBadge = document.getElementById('rate-badge');
+            const quotaFill = document.getElementById('quota-fill');
+            const toastContainer = document.getElementById('toast-container');
+
+            const RPM_LIMIT = 15;
+            const RPM_WINDOW_MS = 60000; // 60 seconds
+
+            // ── Toast Notification System ──
+            function showToast(message, type = 'info') {
+                const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${message}</span>`;
+                toastContainer.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('removing');
+                    toast.addEventListener('animationend', () => toast.remove());
+                }, 4000);
+            }
+
+            // ── Skeleton Loader System ──
+            function showSkeletonLoaders() {
+                const skeletonId = generateId();
+                const skeleton = document.createElement('div');
+                skeleton.className = 'message assistant';
+                skeleton.id = `message-${skeletonId}`;
+                skeleton.innerHTML = `
+                    <div class="message-avatar"><span>AI</span></div>
+                    <div class="message-content">
+                        <div class="skeleton-container">
+                            <div class="skeleton-card">
+                                <div class="skeleton-line title"></div>
+                                <div class="skeleton-line long"></div>
+                                <div class="skeleton-line long"></div>
+                                <div class="skeleton-line medium"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                            <div class="skeleton-card">
+                                <div class="skeleton-line title"></div>
+                                <div class="skeleton-line long"></div>
+                                <div class="skeleton-line medium"></div>
+                                <div class="skeleton-line link"></div>
+                            </div>
+                            <div class="skeleton-card">
+                                <div class="skeleton-line title"></div>
+                                <div class="skeleton-line long"></div>
+                                <div class="skeleton-line long"></div>
+                                <div class="skeleton-line medium"></div>
+                                <div class="skeleton-line link"></div>
+                                <div class="skeleton-line link"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(skeleton);
+                scrollToBottom();
+                return skeletonId;
+            }
+
+            // ── Per-Minute Rate Limit Counter ──
+            function getRpmState() {
+                const stored = localStorage.getItem('deepresearch_rpm');
+                if (stored) {
+                    const state = JSON.parse(stored);
+                    const now = Date.now();
+                    // Purge timestamps older than 60s
+                    state.timestamps = (state.timestamps || []).filter(t => now - t < RPM_WINDOW_MS);
+                    return state;
+                }
+                return { timestamps: [] };
+            }
+
+            function saveRpmState(state) {
+                localStorage.setItem('deepresearch_rpm', JSON.stringify(state));
+            }
+
+            function updateRateBadge() {
+                const state = getRpmState();
+                saveRpmState(state); // purge old timestamps
+                const used = state.timestamps.length;
+                const remaining = Math.max(0, RPM_LIMIT - used);
+                rateBadge.textContent = `⚡ Requests: ${remaining}/${RPM_LIMIT} remaining`;
+
+                // Update bar
+                const pct = Math.max(0, Math.min(100, (remaining / RPM_LIMIT) * 100));
+                quotaFill.style.width = pct + '%';
+
+                // Color coding
+                rateBadge.className = 'rate-badge';
+                if (remaining <= 2) {
+                    quotaFill.style.backgroundColor = 'var(--error-color)';
+                    rateBadge.classList.add('danger');
+                } else if (remaining <= 5) {
+                    quotaFill.style.backgroundColor = 'var(--warning-color)';
+                    rateBadge.classList.add('warning');
+                } else {
+                    quotaFill.style.backgroundColor = 'var(--success-color)';
+                }
+            }
+
+            function trackUsage() {
+                const state = getRpmState();
+                state.timestamps.push(Date.now());
+                saveRpmState(state);
+                updateRateBadge();
+
+                // Warning toast when ≤2 remaining
+                const remaining = RPM_LIMIT - state.timestamps.length;
+                if (remaining === 2) {
+                    showToast('⚠️ Only 2 requests remaining this minute!', 'warning');
+                } else if (remaining === 0) {
+                    showToast('Rate limit reached — wait ~1 minute before next request.', 'error');
+                }
+            }
+
+            // Refresh the rate badge every 5 seconds to auto-recover
+            setInterval(updateRateBadge, 5000);
+
+            // Mode toggle logic
+            function setModeUI(mode) {
+                config.mode = mode;
+                if (mode === 'pro') {
+                    modeProBtn.style.background = 'var(--primary-color)';
+                    modeProBtn.style.color = 'white';
+                    modeFastBtn.style.background = 'transparent';
+                    modeFastBtn.style.color = 'var(--neutral-700)';
+                    modelSelect.innerHTML = `
+                        <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro (Deep Research)</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    `;
+                    config.model = 'gemini-2.5-pro';
+                } else {
+                    modeFastBtn.style.background = 'var(--primary-color)';
+                    modeFastBtn.style.color = 'white';
+                    modeProBtn.style.background = 'transparent';
+                    modeProBtn.style.color = 'var(--neutral-700)';
+                    modelSelect.innerHTML = `
+                        <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                    `;
+                    config.model = 'gemini-2.5-flash';
+                }
+                updateRateBadge();
+            }
+
+            modeProBtn.addEventListener('click', () => setModeUI('pro'));
+            modeFastBtn.addEventListener('click', () => setModeUI('fast'));
 
             // Load saved config
             apiKeyInput.value = config.apiKey;
             depthSelect.value = config.depth;
             breadthSelect.value = config.breadth;
-            modelSelect.value = config.model;
+            setModeUI(config.mode);
+            updateRateBadge();
+            if (config.model && Array.from(modelSelect.options).some(o => o.value === config.model)) {
+                modelSelect.value = config.model;
+            }
             sessionIdSpan.textContent = chatState.sessionId;
 
             // Add welcome message
@@ -648,14 +998,16 @@
                 config.depth = parseInt(depthSelect.value);
                 config.breadth = parseInt(breadthSelect.value);
                 config.model = modelSelect.value;
+                config.mode = modeProBtn.style.background !== 'transparent' ? 'pro' : 'fast';
 
                 localStorage.setItem('apiKey', config.apiKey);
                 localStorage.setItem('depth', config.depth);
                 localStorage.setItem('breadth', config.breadth);
                 localStorage.setItem('model', config.model);
+                localStorage.setItem('gemini_mode', config.mode);
 
-                updateStatus('success', 'Configuration saved');
-                setTimeout(() => updateStatus('ready', 'Ready'), 2000);
+                updateRateBadge();
+                showToast('Configuration saved', 'success');
             });
 
             // Send message on form submit
@@ -703,17 +1055,23 @@
                         body: JSON.stringify(researchRequest)
                     });
 
+                    if (response.status === 429) {
+                        throw new Error('⏳ Rate limit reached — try again in ~1 minute, or switch to Fast mode.');
+                    }
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Research request failed');
                     }
 
+                    trackUsage();
+
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let buffer = '';
 
-                    // Add thinking message (before streaming starts)
-                    const thinkingId = addSystemMessage("Researching, please wait...");
+                    // Show skeleton loaders while researching
+                    const thinkingId = showSkeletonLoaders();
 
                     while (true) {
                         const { done, value } = await reader.read();
@@ -756,12 +1114,13 @@
                             boundary = buffer.indexOf('\n\n');
                         }
                     }
-                    updateStatus('success', 'Research complete'); // Status after stream is complete
+                    updateStatus('success', 'Research complete');
+                    showToast('Research complete! Results are ready.', 'success');
 
                 } catch (error) {
                     console.error('Research error:', error);
                     updateStatus('error', 'An error occurred');
-                    addSystemMessage(`Error: ${error.message || 'Unknown error'}`);
+                    showToast(error.message || 'Research failed. Please try again.', 'error');
                 } finally {
                     chatState.isResearching = false;
                     setButtonLoading(false);
@@ -932,11 +1291,22 @@
                 try {
                     const response = await fetch('/previous_sessions');
                     if (!response.ok) {
-                        throw new Error('Failed to fetch previous sessions');
+                        // Silently handle — endpoint may not be available on Vercel serverless
+                        console.warn('Previous sessions endpoint returned', response.status);
+                        return;
+                    }
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json')) {
+                        console.warn('Previous sessions returned non-JSON response');
+                        return;
                     }
                     const sessions = await response.json();
 
-                    previousSessionsList.innerHTML = ''; // Clear existing list
+                    previousSessionsList.innerHTML = '';
+                    if (!sessions || sessions.length === 0) {
+                        previousSessionsList.innerHTML = '<li style="color: var(--neutral-700); font-style: italic; padding: 0.5rem 0;">No previous sessions yet.</li>';
+                        return;
+                    }
                     sessions.forEach(session => {
                         const listItem = document.createElement('li');
                         listItem.className = 'session-item';
@@ -947,7 +1317,6 @@
                         previousSessionsList.appendChild(listItem);
                     });
 
-                    // Add event listeners to load buttons
                     document.querySelectorAll('.load-session-button').forEach(button => {
                         button.addEventListener('click', async function () {
                             const sessionId = this.dataset.sessionId;
@@ -956,8 +1325,8 @@
                     });
 
                 } catch (error) {
-                    console.error('Error loading previous sessions:', error);
-                    addSystemMessage('Error loading previous sessions.');
+                    // Silently handle — don't show error to user
+                    console.warn('Could not load previous sessions:', error.message);
                 }
             }
 

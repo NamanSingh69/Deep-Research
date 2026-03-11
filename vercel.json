@@ -20,6 +20,19 @@
             "dest": "/static/$1"
         },
         {
+            "src": "/previous_sessions",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/load_session/(.*)",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/research",
+            "dest": "/api/index.py",
+            "methods": ["POST", "OPTIONS"]
+        },
+        {
             "src": "/api/(.*)",
             "dest": "/api/index.py"
         },
