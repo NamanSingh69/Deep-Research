@@ -137,6 +137,10 @@ def discover_models(api_key: str = None) -> list:
         models = client.models.list()
         content_models = []
         for m in models:
+            # Filter out specialized output-only models
+            if "-image" in m.name.lower() or "-audio" in m.name.lower():
+                continue
+
             # Filter for models that support generateContent
             methods = getattr(m, "supported_generation_methods", []) or getattr(m, "supported_actions", []) or []
             method_strs = [str(method) for method in methods]
