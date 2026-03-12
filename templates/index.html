@@ -1091,6 +1091,15 @@
                                 if (jsonData.error) {
                                     // Remove thinking message
                                     removeMessage(thinkingId);
+                                    
+                                    // Auto-clear expired/invalid custom API keys
+                                    if ((jsonData.error.includes('API_KEY_INVALID') || jsonData.error.includes('API key expired') || jsonData.error.includes('API key not valid')) && config.apiKey) {
+                                        localStorage.removeItem('apiKey');
+                                        config.apiKey = '';
+                                        document.getElementById('api-key').value = '';
+                                        jsonData.error += " (Your saved custom API key was expired and has been cleared. Please try again to use the public fallback key.)";
+                                    }
+                                    
                                     updateStatus('error', jsonData.error);
                                     addSystemMessage(`Error: ${jsonData.error}`);
                                 } else if (jsonData.reportChunk) {

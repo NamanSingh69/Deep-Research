@@ -184,6 +184,9 @@ class DeepResearchTool:
         the best one. Falls back to a static cascade if discovery fails.
         Get your free API key at: https://aistudio.google.com/app/apikey
         """
+        if api_key:
+            api_key = api_key.strip()
+            
         if not api_key:
             api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY")
 
