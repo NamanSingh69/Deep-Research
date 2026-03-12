@@ -703,8 +703,8 @@
                                 FAST</button>
                         </div>
                         <select id="model" style="flex: 1;">
-                            <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro (Deep Research)</option>
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-3.1-pro-preview" selected>Gemini 3.1 Pro (Deep Research)</option>
+                            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
                         </select>
                     </div>
                 </div>
@@ -781,7 +781,7 @@
                 depth: parseInt(localStorage.getItem('depth') || '2'),
                 breadth: parseInt(localStorage.getItem('breadth') || '3'),
                 mode: localStorage.getItem('gemini_mode') || 'pro',
-                model: localStorage.getItem('model') || 'gemini-2.5-pro',
+                model: localStorage.getItem('model') || 'gemini-3.1-pro-preview',
                 markdown: true,
                 citationMode: true
             };
@@ -941,20 +941,19 @@
                     modeFastBtn.style.background = 'transparent';
                     modeFastBtn.style.color = 'var(--neutral-700)';
                     modelSelect.innerHTML = `
-                        <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro (Deep Research)</option>
-                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gemini-3.1-pro-preview" selected>Gemini 3.1 Pro (Deep Research)</option>
+                        <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
                     `;
-                    config.model = 'gemini-2.5-pro';
+                    config.model = 'gemini-3.1-pro-preview';
                 } else {
                     modeFastBtn.style.background = 'var(--primary-color)';
                     modeFastBtn.style.color = 'white';
                     modeProBtn.style.background = 'transparent';
                     modeProBtn.style.color = 'var(--neutral-700)';
                     modelSelect.innerHTML = `
-                        <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash</option>
-                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                        <option value="gemini-3.1-flash-lite-preview" selected>Gemini 3.1 Flash Lite</option>
                     `;
-                    config.model = 'gemini-2.5-flash';
+                    config.model = 'gemini-3.1-flash-lite-preview';
                 }
                 updateRateBadge();
             }

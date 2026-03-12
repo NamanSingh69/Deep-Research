@@ -156,8 +156,8 @@ class DeepResearchTool:
 
         # STRICTLY use the standard genai Client
         self.client = genai.Client(api_key=api_key)
-        # Use provided model or fallback to pro
-        self.model_name = self.config.model_name or "gemini-2.5-pro"
+        # Use provided model or fallback to 3.1 pro
+        self.model_name = self.config.model_name or "gemini-3.1-pro-preview"
         logger.info(f"Gemini API configured (Client ready). Model: {self.model_name}")
 
     async def search_web(self, query: str, num_results: int = None) -> List[Dict[str, str]]:
@@ -412,7 +412,7 @@ async def research(research_request: ResearchRequest):
     config = ResearchConfig(
         depth=config_data.get('depth', 2),
         breadth=config_data.get('breadth', 3),
-        model_name=config_data.get('model', 'gemini-2.5-pro'),
+        model_name=config_data.get('model', 'gemini-3.1-pro-preview'),
         citation_mode=config_data.get('citationMode', True)
     )
 
