@@ -434,7 +434,10 @@ class DeepResearchTool:
 
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,
-                contents=prompt
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    tools=[{"google_search": {}}]
+                )
             )
             response_text = response.text
             response_text = re.sub(r'```(?:json)?\n?(.*?)```', r'\1', response_text, flags=re.DOTALL)
@@ -597,7 +600,10 @@ class DeepResearchTool:
             # Send the complete context and history to the model
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,
-                contents=gemini_history
+                contents=gemini_history,
+                config=genai.types.GenerateContentConfig(
+                    tools=[{"google_search": {}}]
+                )
             )
 
             # Add the current message and response to session history
