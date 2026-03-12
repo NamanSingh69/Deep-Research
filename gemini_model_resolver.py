@@ -48,11 +48,7 @@ logger = logging.getLogger(__name__)
 # Priority-ordered cascade — best model first
 MODEL_CASCADE = [
     "gemini-3.1-pro-preview",
-    "gemini-3-flash-preview",
     "gemini-3.1-flash-lite-preview",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
 ]
 
 # Known free-tier rate limits (per project, March 2026)
@@ -62,11 +58,7 @@ KNOWN_RATE_LIMITS = {
     # Key metric: RPD (Requests Per Day) — this is the binding constraint on free tier
     # RPD resets at midnight Pacific time
     "gemini-3.1-pro-preview":        {"RPD": 100,  "RPM": 5,  "TPM": 250_000, "tier": "pro",       "gen": "3.1"},
-    "gemini-3-flash-preview":        {"RPD": 500,  "RPM": 10, "TPM": 250_000, "tier": "flash",     "gen": "3.0"},
     "gemini-3.1-flash-lite-preview": {"RPD": 1000, "RPM": 15, "TPM": 250_000, "tier": "flash-lite", "gen": "3.1"},
-    "gemini-2.5-pro":                {"RPD": 100,  "RPM": 5,  "TPM": 250_000, "tier": "pro",       "gen": "2.5"},
-    "gemini-2.5-flash":              {"RPD": 500,  "RPM": 10, "TPM": 250_000, "tier": "flash",     "gen": "2.5"},
-    "gemini-2.5-flash-lite":         {"RPD": 1500, "RPM": 15, "TPM": 250_000, "tier": "flash-lite", "gen": "2.5"},
 }
 
 # Quality scoring: higher = better model

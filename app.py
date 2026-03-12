@@ -215,6 +215,34 @@ class DeepResearchTool:
             
         return results
 
+    async def _generate_with_fallback(self, contents: Any, **kwargs) -> Any:
+        if not self.client:
+            raise ValueError("Gemini API not configured.")
+            
+        primary_model = self.model_name
+        fallback_model = "gemini-3.1-flash-lite-preview"
+        
+        try:
+            return await self.client.aio.models.generate_content(
+                model=primary_model,
+                contents=contents,
+                **kwargs
+            )
+        except Exception as e:
+            logger.warning(f"Primary model {primary_model} failed: {e}. Falling back to {fallback_model}")
+            if primary_model != fallback_model:
+                try:
+                    return await self.client.aio.models.generate_content(
+                        model=fallback_model,
+                        contents=contents,
+                        **kwargs
+                    )
+                except Exception as fallback_err:
+                    logger.error(f"Fallback model {fallback_model} also failed: {fallback_err}")
+                    raise fallback_err
+            else:
+                raise e
+
     async def generate_search_queries(self, content: str, num_queries: int = None) -> List[str]:
         if num_queries is None:
             num_queries = self.config.breadth
@@ -224,11 +252,7 @@ Return ONLY a valid JSON array of strings. Do not include markdown codeblocks or
 CONTENT: {content[:4000]}"""
 
         try:
-            client = genai.Client(api_key=self.client.api_key if self.client else os.environ.get("GEMINI_API_KEY"))
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
+            response = await self._generate_with_fallback(contents=prompt)
             # Cleanup output and parse JSON
             text = response.text.strip()
             text = re.sub(r'```[a-z]*\n(.*?)\n```', r'\1', text, flags=re.DOTALL).strip()
@@ -272,12 +296,7 @@ Answer the user based on the provided search results. Cite sources using [1], [2
         squashed_message = f"{system_message}\n\nUSER QUERY: {user_query}"
         
         try:
-            # We will rely entirely on generate_content stateless calls
-            client = genai.Client(api_key=self.client.api_key if self.client else os.environ.get("GEMINI_API_KEY"))
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=squashed_message
-            )
+            response = await self._generate_with_fallback(contents=squashed_message)
             
             session.add_message("user", user_query)
             session.add_message("model", response.text)
@@ -371,8 +390,7 @@ Answer the user based on the provided search results. Cite sources using [1], [2
                     idx += 1
 
             polish_prompt = f"Rewrite this research report to be perfectly structured. Keep all markdown. Do not hallucinate.\n{report_content[:50000]}"
-            client = genai.Client(api_key=self.client.api_key if self.client else os.environ.get("GEMINI_API_KEY"))
-            final_resp = client.models.generate_content(model=self.model_name, contents=polish_prompt)
+            final_resp = await self._generate_with_fallback(contents=polish_prompt)
             final_text = final_resp.text if final_resp else str(report_content)
 
             await self.save_research_to_db(session_id, user_query, final_text)
