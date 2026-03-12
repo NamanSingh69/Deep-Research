@@ -142,7 +142,8 @@ class DeepResearchTool:
     def __init__(self, config: ResearchConfig):
         self.config = config
         self.client = None
-        self.model_name = config.model_name
+        self.worker_model = "gemini-3.1-flash-lite-preview"
+        self.orchestrator_model = "gemini-3.1-pro-preview"
         self.http_client = httpx.AsyncClient(timeout=config.search_timeout, follow_redirects=True)
 
     def configure_api(self, api_key: Optional[str] = None):
@@ -156,9 +157,7 @@ class DeepResearchTool:
 
         # STRICTLY use the standard genai Client
         self.client = genai.Client(api_key=api_key)
-        # Use provided model or fallback to 3.1 pro
-        self.model_name = self.config.model_name or "gemini-3.1-pro-preview"
-        logger.info(f"Gemini API configured (Client ready). Model: {self.model_name}")
+        logger.info(f"Gemini API configured: Orchestrator-Worker Hybrid Architecture enabled.")
 
     async def search_web(self, query: str, num_results: int = None) -> List[Dict[str, str]]:
         if num_results is None:
@@ -215,12 +214,13 @@ class DeepResearchTool:
             
         return results
 
-    async def _generate_with_fallback(self, contents: Any, **kwargs) -> Any:
+    async def _generate_with_fallback(self, contents: Any, role: str = "worker", **kwargs) -> Any:
         if not self.client:
             raise ValueError("Gemini API not configured.")
-            
-        primary_model = self.model_name
-        fallback_model = "gemini-3.1-flash-lite-preview"
+
+        # Worker role exclusively uses Flash Lite. Orchestrator uses Pro.
+        primary_model = self.worker_model if role == "worker" else self.orchestrator_model
+        fallback_model = self.worker_model
         
         try:
             return await self.client.aio.models.generate_content(
@@ -243,27 +243,27 @@ class DeepResearchTool:
             else:
                 raise e
 
-    async def generate_search_queries(self, content: str, num_queries: int = None) -> List[str]:
-        if num_queries is None:
-            num_queries = self.config.breadth
-
-        prompt = f"""Generate {num_queries} specific search queries to gather more details on the key topics. 
-Return ONLY a valid JSON array of strings. Do not include markdown codeblocks or other text.
-CONTENT: {content[:4000]}"""
+    async def generate_search_queries(self, content: str) -> List[str]:
+        # Generate as many queries as the LLM deems necessary to cover missing knowledge branches, up to 10.
+        prompt = f"""Read the following research content. Identify all areas that require further investigation, and determine exactly how many specific DuckDuckGo search queries are needed to deeply map out the missing details.
+Generate the optimal number of queries (between 1 and 10) to fetch the required information.
+Return ONLY a valid JSON array of strings, where each string is a search query. Do not include markdown codeblocks or other text.
+CONTENT: {content[:10000]}"""
 
         try:
-            response = await self._generate_with_fallback(contents=prompt)
+            # Always route standard recursive tasks to the ultra-fast worker
+            response = await self._generate_with_fallback(contents=prompt, role="worker")
             # Cleanup output and parse JSON
             text = response.text.strip()
             text = re.sub(r'```[a-z]*\n(.*?)\n```', r'\1', text, flags=re.DOTALL).strip()
             queries = json.loads(text)
             if isinstance(queries, list):
-                 return queries[:num_queries]
+                 return queries[:10]  # Hard cap at 10 simultaneous spawned branches
         except Exception as e:
             logger.error(f"Query generation error: {e}")
             
         # Fallback query parsing
-        return ["Follow up research query"] * num_queries
+        return ["Follow up research query"]
 
     async def chat_with_content(
         self,
@@ -364,12 +364,8 @@ Answer the user based on the provided search results and the previous context of
         all_sources = []
 
         try:
-            # Dynamic Compute Multiplier for Flash Models
-            is_flash = "flash" in self.model_name.lower()
-            current_breadth = breadth * 2 if is_flash else breadth
-
-            # Level 1
-            search_results = await self.search_web(user_query, current_breadth)
+            # Level 1 - Unbounded Initial Assessment
+            search_results = await self.search_web(user_query, 5) # Default 5 wide for level 1
             response_data = await self.chat_with_content(user_query, main_session, search_results)
             initial_sources = self.extract_sources(response_data["response"])
             if not initial_sources:
@@ -380,9 +376,9 @@ Answer the user based on the provided search results and the previous context of
 
             current_report = response_data["response"]
             
-            # Sub-levels
+            # Sub-levels - LLM determines optimal breadth dynamically
             for d in range(2, depth + 1):
-                follow_up_queries = await self.generate_search_queries(current_report, current_breadth)
+                follow_up_queries = await self.generate_search_queries(current_report)
                 report_content += f"## Deeper Dive Level {d}\n\n"
                 
                 # To avoid complex async/genai client rate limit issues, we run sequentially instead of asyncio.gather()
@@ -396,29 +392,28 @@ Answer the user based on the provided search results and the previous context of
                     all_sources.extend(sub_srcs)
                     current_report += f"\n{sub_resp['response']}"
 
-            # Flash-Lite specific Planner-Reflector Loop (Gap-Fill)
-            if is_flash:
-                report_content += f"## Reflective Gap-Fill Analysis\n\n"
-                critique_prompt = f"""Read this drafted research report. Identify exactly 3 critical pieces of missing, vague, or unsupported information. 
+            # Always run Planner-Reflector Gap-Fill using Flash Workers
+            report_content += f"## Reflective Gap-Fill Analysis\n\n"
+            critique_prompt = f"""Read this drafted research report. Identify exactly 3 critical pieces of missing, vague, or unsupported information. 
 Return ONLY a valid JSON array of strings, where each string is a specific DuckDuckGo search query to find the missing data. Do not include markdown or explanations.
 REPORT DRAFT:
 {report_content[:40000]}"""
-                try:
-                    critique_resp = await self._generate_with_fallback(contents=critique_prompt)
-                    text = critique_resp.text.strip()
-                    text = re.sub(r'```[a-z]*\n(.*?)\n```', r'\1', text, flags=re.DOTALL).strip()
-                    gap_queries = json.loads(text)[:3]
+            try:
+                critique_resp = await self._generate_with_fallback(contents=critique_prompt, role="worker")
+                text = critique_resp.text.strip()
+                text = re.sub(r'```[a-z]*\n(.*?)\n```', r'\1', text, flags=re.DOTALL).strip()
+                gap_queries = json.loads(text)[:3]
+                
+                for i, q in enumerate(gap_queries, 1):
+                    gap_session = ChatSession(f"{session_id}_gap_{i}")
+                    gap_search = await self.search_web(q, 3)
+                    gap_resp = await self.chat_with_content(q, gap_session, gap_search)
+                    gap_srcs = self.extract_sources(gap_resp["response"]) or gap_resp.get("sources", [])
                     
-                    for i, q in enumerate(gap_queries, 1):
-                        gap_session = ChatSession(f"{session_id}_gap_{i}")
-                        gap_search = await self.search_web(q, 3)
-                        gap_resp = await self.chat_with_content(q, gap_session, gap_search)
-                        gap_srcs = self.extract_sources(gap_resp["response"]) or gap_resp.get("sources", [])
-                        
-                        report_content += f"### Gap-Fill Query: {q}\n{gap_resp['response']}\n\n"
-                        all_sources.extend(gap_srcs)
-                except Exception as e:
-                    logger.warning(f"Reflection loop failed or skipped: {e}")
+                    report_content += f"### Gap-Fill Query: {q}\n{gap_resp['response']}\n\n"
+                    all_sources.extend(gap_srcs)
+            except Exception as e:
+                logger.warning(f"Reflection loop failed or skipped: {e}")
 
             # Dedup sources
             unique_sources = {}
@@ -434,8 +429,9 @@ REPORT DRAFT:
                     report_content += f"[{idx}] {src['title']}\nURL: {src['url']}\n\n"
                     idx += 1
 
-            polish_prompt = f"Rewrite this research report to be perfectly structured. Keep all markdown. Do not hallucinate.\n{report_content[:50000]}"
-            final_resp = await self._generate_with_fallback(contents=polish_prompt)
+            # Final Orchestrator pass using Gemini 3.1 Pro
+            polish_prompt = f"Rewrite this immense research report to be perfectly structured, professional, and comprehensive. Keep all markdown. Do not hallucinate.\n{report_content[:50000]}"
+            final_resp = await self._generate_with_fallback(contents=polish_prompt, role="orchestrator")
             final_text = final_resp.text if final_resp else str(report_content)
 
             await self.save_research_to_db(session_id, user_query, final_text)

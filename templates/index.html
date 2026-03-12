@@ -691,23 +691,7 @@
                         <option value="5">5 - Broad</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Agent Mode & Engine</label>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <div style="display: flex; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 2px;">
-                            <button type="button" id="mode-pro"
-                                style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: var(--primary-color);">⚡
-                                PRO</button>
-                            <button type="button" id="mode-fast"
-                                style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: transparent; color: var(--neutral-700);">🚀
-                                FAST</button>
-                        </div>
-                        <select id="model" style="flex: 1;">
-                            <option value="gemini-3.1-pro-preview" selected>Gemini 3.1 Pro (Deep Research)</option>
-                            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
-                        </select>
-                    </div>
-                </div>
+
                 <div class="form-group">
                     <label style="visibility: hidden;">Save Config</label>
                     <button type="button" id="save-config" class="secondary">Save Configuration</button>
@@ -780,8 +764,8 @@
                 apiKey: localStorage.getItem('apiKey') || '',
                 depth: parseInt(localStorage.getItem('depth') || '2'),
                 breadth: parseInt(localStorage.getItem('breadth') || '3'),
-                mode: localStorage.getItem('gemini_mode') || 'pro',
-                model: localStorage.getItem('model') || 'gemini-3.1-pro-preview',
+                depth: parseInt(localStorage.getItem('depth') || '2'),
+                breadth: parseInt(localStorage.getItem('breadth') || '3'),
                 markdown: true,
                 citationMode: true
             };
@@ -799,7 +783,6 @@
             const apiKeyInput = document.getElementById('api-key');
             const depthSelect = document.getElementById('depth');
             const breadthSelect = document.getElementById('breadth');
-            const modelSelect = document.getElementById('model');
             const saveConfigButton = document.getElementById('save-config');
             const chatMessages = document.getElementById('chat-messages');
             const messageForm = document.getElementById('message-form');
@@ -812,8 +795,6 @@
             const sessionIdSpan = document.getElementById('session-id');
             const newSessionButton = document.getElementById('new-session-button');
             const previousSessionsList = document.getElementById('previous-sessions-list');
-            const modeProBtn = document.getElementById('mode-pro');
-            const modeFastBtn = document.getElementById('mode-fast');
             const rateBadge = document.getElementById('rate-badge');
             const quotaFill = document.getElementById('quota-fill');
             const toastContainer = document.getElementById('toast-container');
@@ -932,44 +913,9 @@
             // Refresh the rate badge every 5 seconds to auto-recover
             setInterval(updateRateBadge, 5000);
 
-            // Mode toggle logic
-            function setModeUI(mode) {
-                config.mode = mode;
-                if (mode === 'pro') {
-                    modeProBtn.style.background = 'var(--primary-color)';
-                    modeProBtn.style.color = 'white';
-                    modeFastBtn.style.background = 'transparent';
-                    modeFastBtn.style.color = 'var(--neutral-700)';
-                    modelSelect.innerHTML = `
-                        <option value="gemini-3.1-pro-preview" selected>Gemini 3.1 Pro (Deep Research)</option>
-                        <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
-                    `;
-                    config.model = 'gemini-3.1-pro-preview';
-                } else {
-                    modeFastBtn.style.background = 'var(--primary-color)';
-                    modeFastBtn.style.color = 'white';
-                    modeProBtn.style.background = 'transparent';
-                    modeProBtn.style.color = 'var(--neutral-700)';
-                    modelSelect.innerHTML = `
-                        <option value="gemini-3.1-flash-lite-preview" selected>Gemini 3.1 Flash Lite</option>
-                    `;
-                    config.model = 'gemini-3.1-flash-lite-preview';
-                }
-                updateRateBadge();
-            }
-
-            modeProBtn.addEventListener('click', () => setModeUI('pro'));
-            modeFastBtn.addEventListener('click', () => setModeUI('fast'));
-
-            // Load saved config
-            apiKeyInput.value = config.apiKey;
             depthSelect.value = config.depth;
             breadthSelect.value = config.breadth;
-            setModeUI(config.mode);
             updateRateBadge();
-            if (config.model && Array.from(modelSelect.options).some(o => o.value === config.model)) {
-                modelSelect.value = config.model;
-            }
             sessionIdSpan.textContent = chatState.sessionId;
 
             // Add welcome message
