@@ -281,8 +281,25 @@ CONTENT: {content[:4000]}"""
                     search_context += f"[{i}] {result['title']}\nURL: {result['url']}\nSnippet: {result['snippet']}\n\n"
                     sources.append({"index": i, "title": result['title'], "url": result['url']})
 
+        # Compile Chat History
+        history = session.get_history()
+        history_str = ""
+        if history:
+            history_str = "PREVIOUS CHAT CONTEXT:\n"
+            for msg in history:
+                role = "User" if msg.get("role") == "user" else "Assistant"
+                # Handle old dictionary structures and standard SDK list structures
+                content = ""
+                if "parts" in msg:
+                    content = " ".join([p.get("text", "") for p in msg["parts"]])
+                else:
+                    content = str(msg)
+                history_str += f"- {role}: {content}\n\n"
+
         system_message = f"""You are a deep research assistant using DuckDuckGo web scraper results. 
-Answer the user based on the provided search results. Cite sources using [1], [2] format inline.
+Answer the user based on the provided search results and the previous context of this conversation. Cite sources using [1], [2] format inline.
+
+{history_str}
 
 {search_context}"""
 
@@ -347,12 +364,16 @@ Answer the user based on the provided search results. Cite sources using [1], [2
         all_sources = []
 
         try:
+            # Dynamic Compute Multiplier for Flash Models
+            is_flash = "flash" in self.model_name.lower()
+            current_breadth = breadth * 2 if is_flash else breadth
+
             # Level 1
-            search_results = await self.search_web(user_query, breadth)
+            search_results = await self.search_web(user_query, current_breadth)
             response_data = await self.chat_with_content(user_query, main_session, search_results)
             initial_sources = self.extract_sources(response_data["response"])
             if not initial_sources:
-                 initial_sources = response_data["sources"] # Fallback to original scraped links
+                 initial_sources = response_data.get("sources", []) # Fallback to original scraped links
 
             report_content += f"## Initial Findings\n{response_data['response']}\n\n"
             all_sources.extend(initial_sources)
@@ -361,7 +382,7 @@ Answer the user based on the provided search results. Cite sources using [1], [2
             
             # Sub-levels
             for d in range(2, depth + 1):
-                follow_up_queries = await self.generate_search_queries(current_report, breadth)
+                follow_up_queries = await self.generate_search_queries(current_report, current_breadth)
                 report_content += f"## Deeper Dive Level {d}\n\n"
                 
                 # To avoid complex async/genai client rate limit issues, we run sequentially instead of asyncio.gather()
@@ -370,10 +391,34 @@ Answer the user based on the provided search results. Cite sources using [1], [2
                     sub_search = await self.search_web(q, 2) # Limit to 2 per sub-query
                     sub_resp = await self.chat_with_content(q, sub_session, sub_search)
                     
-                    sub_srcs = self.extract_sources(sub_resp["response"]) or sub_resp["sources"]
+                    sub_srcs = self.extract_sources(sub_resp["response"]) or sub_resp.get("sources", [])
                     report_content += f"### {q}\n{sub_resp['response']}\n\n"
                     all_sources.extend(sub_srcs)
                     current_report += f"\n{sub_resp['response']}"
+
+            # Flash-Lite specific Planner-Reflector Loop (Gap-Fill)
+            if is_flash:
+                report_content += f"## Reflective Gap-Fill Analysis\n\n"
+                critique_prompt = f"""Read this drafted research report. Identify exactly 3 critical pieces of missing, vague, or unsupported information. 
+Return ONLY a valid JSON array of strings, where each string is a specific DuckDuckGo search query to find the missing data. Do not include markdown or explanations.
+REPORT DRAFT:
+{report_content[:40000]}"""
+                try:
+                    critique_resp = await self._generate_with_fallback(contents=critique_prompt)
+                    text = critique_resp.text.strip()
+                    text = re.sub(r'```[a-z]*\n(.*?)\n```', r'\1', text, flags=re.DOTALL).strip()
+                    gap_queries = json.loads(text)[:3]
+                    
+                    for i, q in enumerate(gap_queries, 1):
+                        gap_session = ChatSession(f"{session_id}_gap_{i}")
+                        gap_search = await self.search_web(q, 3)
+                        gap_resp = await self.chat_with_content(q, gap_session, gap_search)
+                        gap_srcs = self.extract_sources(gap_resp["response"]) or gap_resp.get("sources", [])
+                        
+                        report_content += f"### Gap-Fill Query: {q}\n{gap_resp['response']}\n\n"
+                        all_sources.extend(gap_srcs)
+                except Exception as e:
+                    logger.warning(f"Reflection loop failed or skipped: {e}")
 
             # Dedup sources
             unique_sources = {}
