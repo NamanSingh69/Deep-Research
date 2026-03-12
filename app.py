@@ -204,51 +204,63 @@ class DeepResearchTool:
 
     async def search_web(self, query: str, num_results: int = None) -> List[Dict[str, str]]:
         """
-        Search the web using Google's JSON Search API and return results.
+        Search the web using DuckDuckGo HTML search and return results.
+        Bypasses API key requirements by scraping public search pages.
         """
         if num_results is None:
             num_results = self.config.breadth
 
         results = []
         
-        # Get the API key and CX from environment variables
-        GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")  # Use the unified API key
-        SEARCH_ENGINE_ID = os.environ.get("SEARCH_ENGINE_ID")  # Custom Search Engine ID
-        
-        if not GOOGLE_API_KEY or not SEARCH_ENGINE_ID:
-            logger.error("Google Search API key or CX not configured")
-            return [{"title": "Search configuration error", "url": "", "snippet": "Google Search API not properly configured."}]
-        
         try:
-            search_url = "https://www.googleapis.com/customsearch/v1"
-            params = {
-                "key": GOOGLE_API_KEY,
-                "cx": SEARCH_ENGINE_ID,
-                "q": query,
-                "num": min(num_results, 10)  # Google API limits to 10 results per request
+            search_url = "https://html.duckduckgo.com/html/"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Origin": "https://html.duckduckgo.com",
+                "Referer": "https://html.duckduckgo.com/"
             }
+            # DuckDuckGo HTML uses a POST request for queries
+            data = {"q": query}
             
-            response = await self.http_client.get(search_url, params=params)
+            response = await self.http_client.post(search_url, data=data, headers=headers)
             
             if response.status_code == 200:
-                search_data = response.json()
+                soup = BeautifulSoup(response.text, 'html.parser')
+                results_elements = soup.find_all('div', class_='result')
                 
-                if "items" in search_data:
-                    for item in search_data["items"]:
+                for item in results_elements:
+                    title_elem = item.find('a', class_='result__url')
+                    snippet_elem = item.find('a', class_='result__snippet')
+                    
+                    if title_elem and snippet_elem:
+                        title = title_elem.text.strip()
+                        raw_url = title_elem.get('href', '')
+                        
+                        # DuckDuckGo routes URLs through a redirect service, parse the real URL
+                        if raw_url.startswith('//duckduckgo.com/l/?'):
+                            parsed = parse_qs(urlparse(raw_url).query)
+                            real_url = parsed.get('uddg', [raw_url])[0]
+                        else:
+                            real_url = raw_url
+                            
+                        snippet = snippet_elem.text.strip()
                         results.append({
-                            "title": item.get("title", ""),
-                            "url": item.get("link", ""),
-                            "snippet": item.get("snippet", "")
+                            "title": title,
+                            "url": real_url,
+                            "snippet": snippet
                         })
-                else:
-                    logger.warning(f"No search results found for query: {query}")
+                        
+                        if len(results) >= num_results:
+                            break
+                            
+                if not results:
+                    logger.warning(f"No search results found on DuckDuckGo for query: {query}")
             else:
-                logger.error(f"Google Search API error: {response.status_code} - {response.text}")
-                return [{"title": "Search API error", "url": "", "snippet": f"Error {response.status_code} from Google Search API."}]
+                logger.error(f"DuckDuckGo Search error: {response.status_code} - Ditching query '{query}'")
                 
         except Exception as e:
-            logger.error(f"Error during search: {e}")
-            return [{"title": "Search error", "url": "", "snippet": f"An error occurred during search: {str(e)}"}]
+            logger.error(f"Error during DuckDuckGo search: {e}")
             
         # Always return something, even if empty
         if not results:
