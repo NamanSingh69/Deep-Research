@@ -63,7 +63,8 @@ app.add_middleware(
 
 # Setup static files removed since frontend is hosted separately on Vercel
 # --- Database Setup ---
-DATABASE = "deep_research.db"
+# Use /tmp for SQLite database in Vercel serverless environment
+DATABASE = "/tmp/deep_research.db" if os.environ.get("VERCEL") else "deep_research.db"
 
 async def init_db():
     """Initializes the SQLite database."""
@@ -195,19 +196,9 @@ class DeepResearchTool:
         # Initialize the google-genai client
         self.client = genai.Client(api_key=api_key)
 
-        # Try dynamic model discovery first
-        try:
-            from gemini_model_resolver import get_best_model_name
-            preferred_tier = "pro" if "pro" in getattr(self.config, "model_name", "pro") else "flash"
-            self.model_name = get_best_model_name(api_key=api_key, preferred_tier=preferred_tier)
-            self.config.model_name = self.model_name
-            logger.info(f"Dynamic model discovery selected: {self.model_name}")
-        except ImportError:
-            logger.info("gemini_model_resolver not found, using static cascade")
-            self.model_name = self.config.model_name
-        except Exception as e:
-            logger.warning(f"Dynamic model discovery failed: {e}. Using config default.")
-            self.model_name = self.config.model_name
+        # Use the model name from config (frontend explicitly requests gemini-2.5-pro or flash)
+        # for Google Search Grounding support.
+        self.model_name = self.config.model_name
 
         logger.info(f"Gemini API configured. Client ready with model: {self.model_name}")
 
