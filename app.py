@@ -34,12 +34,9 @@ class ResearchRequest(BaseModel):
 @dataclass
 class ResearchConfig:
     """Configuration settings for the research tool."""
-    depth: int = 2              
-    breadth: int = 3            
     max_content_length: int = 60000  
     search_timeout: int = 30    
     citation_mode: bool = True  
-    model_name: str = "gemini-3.1-flash-lite-preview" # Default fast model
 
 # --- FastAPI App Setup ---
 # The api/index.py imports this `app` variable directly.
@@ -246,7 +243,7 @@ class DeepResearchTool:
     async def generate_search_queries(self, content: str) -> List[str]:
         # Generate as many queries as the LLM deems necessary to cover missing knowledge branches, up to 10.
         prompt = f"""Read the following research content. Identify all areas that require further investigation, and determine exactly how many specific DuckDuckGo search queries are needed to deeply map out the missing details.
-Generate the optimal number of queries (between 1 and 10) to fetch the required information.
+Generate the optimal number of queries (between 1 and 10) to fetch the required information. If the provided content already thoroughly covers the topic, return an empty array [].
 Return ONLY a valid JSON array of strings, where each string is a search query. Do not include markdown codeblocks or other text.
 CONTENT: {content[:10000]}"""
 
@@ -349,8 +346,6 @@ Answer the user based on the provided search results and the previous context of
     async def perform_research(
         self,
         user_query: str,
-        depth: int,
-        breadth: int,
         session_id: str,
         api_key: str = None
     ) -> Dict[str, Any]:
@@ -359,7 +354,7 @@ Answer the user based on the provided search results and the previous context of
         main_session = ChatSession(session_id)
         await main_session.load_history()
 
-        research_log = {"query": user_query, "depth": depth, "breadth": breadth, "session_id": session_id, "levels": []}
+        research_log = {"query": user_query, "session_id": session_id, "levels": []}
         report_content = f"# Deep Research Report\n\n**Query:** {user_query}\n\n"
         all_sources = []
 
@@ -376,9 +371,13 @@ Answer the user based on the provided search results and the previous context of
 
             current_report = response_data["response"]
             
-            # Sub-levels - LLM determines optimal breadth dynamically
-            for d in range(2, depth + 1):
+            # Sub-levels - LLM determines optimal depth autonomously
+            max_depth = 4 # Hard cutoff to prevent infinite billing loops
+            for d in range(2, max_depth + 1):
                 follow_up_queries = await self.generate_search_queries(current_report)
+                if not follow_up_queries:
+                    break # LLM determined we have enough information
+                    
                 report_content += f"## Deeper Dive Level {d}\n\n"
                 
                 # To avoid complex async/genai client rate limit issues, we run sequentially instead of asyncio.gather()
@@ -469,9 +468,6 @@ async def research(research_request: ResearchRequest):
     session_id = config_data.get('sessionId', f"sess_{int(time.time())}")
 
     config = ResearchConfig(
-        depth=config_data.get('depth', 2),
-        breadth=config_data.get('breadth', 3),
-        model_name=config_data.get('model', 'gemini-3.1-pro-preview'),
         citation_mode=config_data.get('citationMode', True)
     )
 
@@ -484,8 +480,6 @@ async def research(research_request: ResearchRequest):
             
             result = await research_tool.perform_research(
                 user_query=user_query,
-                depth=config.depth,
-                breadth=config.breadth,
                 session_id=session_id,
                 api_key=config_data.get('apiKey')
             )

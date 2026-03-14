@@ -675,22 +675,6 @@
                         <strong>Note:</strong> Web Search is powered by DuckDuckGo and is completely free and unlimited. Google GenAI handles summarization.
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="depth">Research Depth</label>
-                    <select id="depth">
-                        <option value="1">1 - Quick Research</option>
-                        <option value="2" selected>2 - Standard</option>
-                        <option value="3">3 - Deep Research</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="breadth">Research Breadth</label>
-                    <select id="breadth">
-                        <option value="2">2 - Focused</option>
-                        <option value="3" selected>3 - Standard</option>
-                        <option value="5">5 - Broad</option>
-                    </select>
-                </div>
 
                 <div class="form-group">
                     <label style="visibility: hidden;">Save Config</label>
@@ -762,10 +746,6 @@
             // Configuration state
             let config = {
                 apiKey: localStorage.getItem('apiKey') || '',
-                depth: parseInt(localStorage.getItem('depth') || '2'),
-                breadth: parseInt(localStorage.getItem('breadth') || '3'),
-                depth: parseInt(localStorage.getItem('depth') || '2'),
-                breadth: parseInt(localStorage.getItem('breadth') || '3'),
                 markdown: true,
                 citationMode: true
             };
@@ -781,8 +761,6 @@
 
             // DOM elements
             const apiKeyInput = document.getElementById('api-key');
-            const depthSelect = document.getElementById('depth');
-            const breadthSelect = document.getElementById('breadth');
             const saveConfigButton = document.getElementById('save-config');
             const chatMessages = document.getElementById('chat-messages');
             const messageForm = document.getElementById('message-form');
@@ -913,8 +891,6 @@
             // Refresh the rate badge every 5 seconds to auto-recover
             setInterval(updateRateBadge, 5000);
 
-            depthSelect.value = config.depth;
-            breadthSelect.value = config.breadth;
             updateRateBadge();
             sessionIdSpan.textContent = chatState.sessionId;
 
@@ -940,16 +916,7 @@
             // Save configuration
             saveConfigButton.addEventListener('click', function () {
                 config.apiKey = apiKeyInput.value;
-                config.depth = parseInt(depthSelect.value);
-                config.breadth = parseInt(breadthSelect.value);
-                config.model = modelSelect.value;
-                config.mode = modeProBtn.style.background !== 'transparent' ? 'pro' : 'fast';
-
                 localStorage.setItem('apiKey', config.apiKey);
-                localStorage.setItem('depth', config.depth);
-                localStorage.setItem('breadth', config.breadth);
-                localStorage.setItem('model', config.model);
-                localStorage.setItem('gemini_mode', config.mode);
 
                 updateRateBadge();
                 showToast('Configuration saved', 'success');
@@ -984,9 +951,6 @@
                         query: query,
                         config: {
                             apiKey: config.apiKey,
-                            depth: config.depth,
-                            breadth: config.breadth,
-                            model: config.model,
                             sessionId: chatState.sessionId,
                             citationMode: config.citationMode
                         }
